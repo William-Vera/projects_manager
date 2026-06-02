@@ -1,8 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client-js"
   output   = "../src/generated/prisma"
@@ -13,29 +11,95 @@ datasource db {
 }
 
 model User {
-  id String   @id @default(uuid())
-  name String
-  email String   @unique
-  password String
-  createdAt DateTime @default(now())
-  projects Projects[]
+  id                   String               @id @default(uuid())
+  name                 String
+  email                String               @unique
+  password             String
+  createdAt            DateTime             @default(now())
+  projects             Projects[]
+  createdOrganizations Organization[]       @relation("CreatedOrganizations")
+  organizations        OrganizationMember[]
+  assignedTasks        Task[]
+  notifications        Notification[]
 }
 
-enum ProjectStatus{
+enum ProjectStatus {
   PLANIFICADO
   EN_CURSO
   COMPLETADO
   CANCELADO
 }
 
-model Projects{
-  id String @id @default(uuid())
-  name String
-  description String
-  status ProjectStatus @default(PLANIFICADO)
-  startDate DateTime?
-  endDate DateTime?
+model Projects {
+  id             String        @id @default(uuid())
+  name           String
+  description    String
+  status         ProjectStatus @default(PLANIFICADO)
+  startDate      DateTime?
+  endDate        DateTime?
+  createdAt      DateTime      @default(now())
+  duenoId        String
+  dueno          User          @relation(fields: [duenoId], references: [id], onDelete: Cascade)
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tasks          Task[]
+}
+
+enum OrganizationRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+model Organization {
+  id        String               @id @default(uuid())
+  name      String
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+  ownerId   String
+  owner     User                 @relation("CreatedOrganizations", fields: [ownerId], references: [id], onDelete: Cascade)
+  members   OrganizationMember[]
+  projects  Projects[]
+}
+
+model OrganizationMember {
+  id             String           @id @default(uuid())
+  userId         String
+  organizationId String
+  role           OrganizationRole @default(MEMBER)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+}
+
+enum TaskStatus {
+  PENDIENTE
+  EN_PROGRESO
+  COMPLETADA
+}
+
+model Task {
+  id           String     @id @default(uuid())
+  title        String
+  description  String?
+  status       TaskStatus @default(PENDIENTE)
+  dueDate      DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  projectId    String
+  project      Projects   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignedToId String?
+  assignedTo   User?      @relation(fields: [assignedToId], references: [id], onDelete: SetNull)
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  message   String
+  read      Boolean  @default(false)
   createdAt DateTime @default(now())
-  duenoId String
-  dueno User @relation(fields: [duenoId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
